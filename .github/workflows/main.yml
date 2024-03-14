@@ -59,38 +59,10 @@ jobs:
       run: mkdir -p scratch && cp web/target/mapstore.war scratch/mapstore-${{ github.sha }}.war
 
     - name: "publish war as artifact"
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-release-asset@v1
       with:
         name: mapstore.war
-        path: scratch/mapstore-${{ github.sha }}.war
-
-    - name: Getting image tag
-      if: github.repository == 'georchestra/mapstore2-georchestra'
-      id: version
-      run: echo ::set-output name=VERSION::$(echo $GITHUB_REF | cut -d / -f 3)
-
-    - name: "Building docker image"
-      if: github.repository == 'georchestra/mapstore2-georchestra'
-      run: |
-        cp scratch/mapstore-${{ github.sha }}.war docker/MapStore-${{ steps.version.outputs.VERSION }}.war
-        docker build . -t georchestra/mapstore:${{ steps.version.outputs.VERSION }}
-        # mvn -B package dockerfile:build -Pdocker,log4j-logstash,sentry-log4j -DdockerImageName=georchestra/mapstore:${{ steps.version.outputs.VERSION }} -settings settings.xml
-      working-directory: ${{ github.workspace }}
-    - name: "Logging in docker.io"
-      if: github.repository == 'georchestra/mapstore2-georchestra'
-      uses: azure/docker-login@v1
-      with:
-        username: '${{ secrets.DOCKER_HUB_USERNAME }}'
-        password: '${{ secrets.DOCKER_HUB_PASSWORD }}'
-
-    - name: "Pushing latest to docker.io"
-      if: github.ref == 'refs/heads/master' && github.repository == 'georchestra/mapstore2-georchestra'
-      run: |
-        docker tag georchestra/mapstore:${{ steps.version.outputs.VERSION }} georchestra/mapstore:latest
-        docker push georchestra/mapstore:latest
-      working-directory: ${{ github.workspace }}
-
-    - name: "Pushing tag to docker.io"
-      if: contains(github.ref, 'refs/tags/') && github.repository == 'georchestra/mapstore2-georchestra'
-      run: |
-        docker push georchestra/mapstore:${{ steps.version.outputs.VERSION }}
+        upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
+        asset_path: ../${{ github.event.repository.name }}-${{ steps.get_version.outputs.VERSION }}.zip
+        asset_name: ${{ github.event.repository.name }}-${{ steps.get_version.outputs.VERSION }}.zip
+        asset_content_type: application/war
